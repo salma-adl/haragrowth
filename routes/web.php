@@ -94,13 +94,32 @@ Route::get('/book/{booking_code}', function ($booking_code) {
 });
 
 // Test route for email preview
-Route::get('/test-email', function () {
-    $customerData = [
-        'name' => 'John Doe',
-        'booking_code' => 'HG-20260111-TEST123',
-        'url_book' => url('/book'),
-    ];
-
-    return new \App\Mail\CustomerNotification($customerData);
+Route::get('/debug-db', function () {
+    try {
+        $dbName = \DB::connection()->getDatabaseName();
+        $userCount = \App\Models\User::count();
+        $users = \App\Models\User::all();
+        $roles = \Spatie\Permission\Models\Role::all();
+        $permissions = \Spatie\Permission\Models\Permission::count();
+        
+        return response()->json([
+            'database' => $dbName,
+            'connection' => config('database.default'),
+            'host' => config('database.connections.' . config('database.default') . '.host'),
+            'user_count' => $userCount,
+            'users' => $users,
+            'role_count' => $roles->count(),
+            'roles' => $roles->pluck('name'),
+            'permission_count' => $permissions,
+            'env_db_connection' => env('DB_CONNECTION'),
+            'env_db_host' => env('DB_HOST'),
+            'env_db_database' => env('DB_DATABASE'),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
 });
 
