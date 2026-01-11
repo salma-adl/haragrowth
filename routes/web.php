@@ -110,27 +110,37 @@ Route::get('/debug-queue', function () {
         $failedJobs = \DB::table('failed_jobs')->orderBy('id', 'desc')->take(5)->get();
         $mailConfig = \App\Models\MailConfiguration::where('is_active', true)->first();
         
-        // Test SMTP Connection
-        $connectionStatus = 'Untested';
-        $connectionError = null;
+        // Test SMTP Connection (Port 587)
+        $connectionStatus587 = 'Untested';
         try {
             $host = $mailConfig ? $mailConfig->mail_host : env('MAIL_HOST', 'smtp.gmail.com');
-            $port = $mailConfig ? $mailConfig->mail_port : env('MAIL_PORT', 587);
-            
-            $fp = fsockopen($host, $port, $errno, $errstr, 5);
+            $fp = fsockopen($host, 587, $errno, $errstr, 5);
             if ($fp) {
-                $connectionStatus = "Connected to $host:$port successfully";
+                $connectionStatus587 = "Connected to $host:587 successfully";
                 fclose($fp);
             } else {
-                $connectionStatus = "Failed to connect to $host:$port";
-                $connectionError = "$errno: $errstr";
+                $connectionStatus587 = "Failed to connect to $host:587 - $errno: $errstr";
             }
         } catch (\Exception $e) {
-            $connectionStatus = "Exception checking connection";
-            $connectionError = $e->getMessage();
+            $connectionStatus587 = "Exception (587): " . $e->getMessage();
         }
 
-        return view('debug-queue', compact('pendingJobs', 'failedJobs', 'mailConfig', 'connectionStatus', 'connectionError'));
+        // Test SMTP Connection (Port 465)
+        $connectionStatus465 = 'Untested';
+        try {
+            $host = $mailConfig ? $mailConfig->mail_host : env('MAIL_HOST', 'smtp.gmail.com');
+            $fp = fsockopen($host, 465, $errno, $errstr, 5);
+            if ($fp) {
+                $connectionStatus465 = "Connected to $host:465 successfully";
+                fclose($fp);
+            } else {
+                $connectionStatus465 = "Failed to connect to $host:465 - $errno: $errstr";
+            }
+        } catch (\Exception $e) {
+            $connectionStatus465 = "Exception (465): " . $e->getMessage();
+        }
+
+        return view('debug-queue', compact('pendingJobs', 'failedJobs', 'mailConfig', 'connectionStatus587', 'connectionStatus465'));
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
     }

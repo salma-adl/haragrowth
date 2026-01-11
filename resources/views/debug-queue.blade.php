@@ -59,15 +59,19 @@
             <!-- Connection Status -->
             <div class="bg-white shadow rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4 text-purple-600">SMTP Connection Test</h2>
-                <div class="text-sm">
-                    <p><span class="font-bold">Status:</span> 
-                        <span class="{{ str_contains($connectionStatus, 'Failed') ? 'text-red-600' : 'text-green-600' }} font-bold">
-                            {{ $connectionStatus }}
-                        </span>
-                    </p>
-                    @if($connectionError)
-                        <p class="mt-2 text-red-600 font-mono bg-red-50 p-2 rounded">{{ $connectionError }}</p>
-                    @endif
+                <div class="text-sm space-y-3">
+                    <div>
+                        <p class="font-bold">Port 587 (TLS):</p>
+                        <p class="{{ str_contains($connectionStatus587, 'Failed') ? 'text-red-600' : 'text-green-600' }}">
+                            {{ $connectionStatus587 }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-bold">Port 465 (SSL):</p>
+                        <p class="{{ str_contains($connectionStatus465, 'Failed') ? 'text-red-600' : 'text-green-600' }}">
+                            {{ $connectionStatus465 }}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
