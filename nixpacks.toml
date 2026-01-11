@@ -1,12 +1,15 @@
-# Force rebuild
 [phases.setup]
 nixPkgs = ["php82", "php82Extensions.pdo_mysql", "php82Extensions.bcmath", "php82Extensions.gd", "php82Extensions.zip", "php82Extensions.intl", "php82Extensions.redis", "php82Extensions.exif", "composer", "nodejs_20"]
 
-[phases.build]
+[phases.install]
 cmds = [
     "npm install",
-    "npm run build",
     "composer install --no-dev --optimize-autoloader --no-interaction --no-progress --ignore-platform-reqs"
+]
+
+[phases.build]
+cmds = [
+    "npm run build"
 ]
 
 [phases.start]
