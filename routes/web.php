@@ -108,8 +108,29 @@ Route::get('/debug-queue', function () {
     try {
         $pendingJobs = \DB::table('jobs')->get();
         $failedJobs = \DB::table('failed_jobs')->orderBy('id', 'desc')->take(5)->get();
+        $mailConfig = \App\Models\MailConfiguration::where('is_active', true)->first();
         
-        return view('debug-queue', compact('pendingJobs', 'failedJobs'));
+        // Test SMTP Connection
+        $connectionStatus = 'Untested';
+        $connectionError = null;
+        try {
+            $host = $mailConfig ? $mailConfig->mail_host : env('MAIL_HOST', 'smtp.gmail.com');
+            $port = $mailConfig ? $mailConfig->mail_port : env('MAIL_PORT', 587);
+            
+            $fp = fsockopen($host, $port, $errno, $errstr, 5);
+            if ($fp) {
+                $connectionStatus = "Connected to $host:$port successfully";
+                fclose($fp);
+            } else {
+                $connectionStatus = "Failed to connect to $host:$port";
+                $connectionError = "$errno: $errstr";
+            }
+        } catch (\Exception $e) {
+            $connectionStatus = "Exception checking connection";
+            $connectionError = $e->getMessage();
+        }
+
+        return view('debug-queue', compact('pendingJobs', 'failedJobs', 'mailConfig', 'connectionStatus', 'connectionError'));
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
     }

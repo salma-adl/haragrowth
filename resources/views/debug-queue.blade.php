@@ -35,6 +35,43 @@
             </div>
         @endif
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Mail Configuration -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4 text-blue-600">Mail Configuration</h2>
+                @if($mailConfig)
+                    <div class="text-sm">
+                        <p><span class="font-bold">Source:</span> Database (MailConfiguration table)</p>
+                        <p><span class="font-bold">Host:</span> {{ $mailConfig->mail_host }}</p>
+                        <p><span class="font-bold">Port:</span> {{ $mailConfig->mail_port }}</p>
+                        <p><span class="font-bold">Username:</span> {{ $mailConfig->mail_username }}</p>
+                        <p><span class="font-bold">Encryption:</span> {{ $mailConfig->mail_encryption }}</p>
+                        <p class="mt-2 text-yellow-600 bg-yellow-50 p-2 rounded">Note: Database settings override .env settings.</p>
+                    </div>
+                @else
+                    <div class="text-sm">
+                        <p><span class="font-bold">Source:</span> .env File</p>
+                        <p class="text-gray-500 italic">No active MailConfiguration found in database.</p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Connection Status -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4 text-purple-600">SMTP Connection Test</h2>
+                <div class="text-sm">
+                    <p><span class="font-bold">Status:</span> 
+                        <span class="{{ str_contains($connectionStatus, 'Failed') ? 'text-red-600' : 'text-green-600' }} font-bold">
+                            {{ $connectionStatus }}
+                        </span>
+                    </p>
+                    @if($connectionError)
+                        <p class="mt-2 text-red-600 font-mono bg-red-50 p-2 rounded">{{ $connectionError }}</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Pending Jobs -->
             <div class="bg-white shadow rounded-lg p-6">
