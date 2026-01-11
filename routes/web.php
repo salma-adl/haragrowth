@@ -109,22 +109,24 @@ Route::get('/debug-queue', function () {
         $pendingJobs = \DB::table('jobs')->get();
         $failedJobs = \DB::table('failed_jobs')->orderBy('id', 'desc')->take(5)->get();
         
-        return response()->json([
-            'pending_jobs_count' => $pendingJobs->count(),
-            'pending_jobs' => $pendingJobs,
-            'failed_jobs_count' => $failedJobs->count(),
-            'latest_failed_jobs' => $failedJobs->map(function($job) {
-                return [
-                    'id' => $job->id,
-                    'connection' => $job->connection,
-                    'queue' => $job->queue,
-                    'exception' => mb_strimwidth($job->exception, 0, 500, '...'), // Truncate long exception
-                    'failed_at' => $job->failed_at
-                ];
-            }),
-        ]);
+        return view('debug-queue', compact('pendingJobs', 'failedJobs'));
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/process-queue', function () {
+    try {
+        // Run the worker for one job or until empty
+        \Illuminate\Support\Facades\Artisan::call('queue:work', [
+            '--stop-when-empty' => true,
+            '--tries' => 3,
+            '--timeout' => 60
+        ]);
+        
+        return redirect('/debug-queue')->with('status', 'Queue processed successfully!');
+    } catch (\Exception $e) {
+        return redirect('/debug-queue')->with('error', 'Error processing queue: ' . $e->getMessage());
     }
 });
 
