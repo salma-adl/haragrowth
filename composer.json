@@ -6,6 +6,9 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ext-intl": "*",
+        "ext-zip": "*",
+        "ext-exif": "*",
         "althinect/filament-spatie-roles-permissions": "^2.3",
         "filament/filament": "^3.2",
         "filament/spatie-laravel-media-library-plugin": "^3.2",
