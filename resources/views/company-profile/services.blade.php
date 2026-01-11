@@ -26,14 +26,14 @@
 <section class="py-10 px-6 bg-[#FFF8E7] min-h-screen">
     <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
         @foreach($services as $service)
-        <div class="bg-white rounded-3xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden flex flex-col xl:flex-row h-full">
+        <div class="bg-white rounded-3xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden flex flex-col h-full">
             {{-- Gambar Layanan --}}
-            <div class="w-full xl:w-5/12 relative h-64 xl:h-auto">
+            <div class="w-full relative h-64">
                 <img src="{{ asset('storage/' . $service->attachment) }}" alt="{{ $service->name }}" class="absolute inset-0 w-full h-full object-cover">
             </div>
 
             {{-- Detail Layanan --}}
-            <div class="w-full xl:w-7/12 p-6 flex flex-col">
+            <div class="w-full p-6 flex flex-col flex-grow">
                 <div class="flex justify-between items-start mb-2 gap-2">
                     <h2 class="text-xl font-bold text-[#3B2E2B]">{{ $service->name }}</h2>
                     @if($service->price)
