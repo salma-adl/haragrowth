@@ -104,3 +104,27 @@ Route::get('/test-email', function () {
     return new \App\Mail\CustomerNotification($customerData);
 });
 
+Route::get('/debug-queue', function () {
+    try {
+        $pendingJobs = \DB::table('jobs')->get();
+        $failedJobs = \DB::table('failed_jobs')->orderBy('id', 'desc')->take(5)->get();
+        
+        return response()->json([
+            'pending_jobs_count' => $pendingJobs->count(),
+            'pending_jobs' => $pendingJobs,
+            'failed_jobs_count' => $failedJobs->count(),
+            'latest_failed_jobs' => $failedJobs->map(function($job) {
+                return [
+                    'id' => $job->id,
+                    'connection' => $job->connection,
+                    'queue' => $job->queue,
+                    'exception' => mb_strimwidth($job->exception, 0, 500, '...'), // Truncate long exception
+                    'failed_at' => $job->failed_at
+                ];
+            }),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
