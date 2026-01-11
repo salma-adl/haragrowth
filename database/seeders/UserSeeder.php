@@ -13,19 +13,23 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        $admin = User::create([
-            'name' => 'Admin',
-            'email' => 'adminhara1@gmail.com',
-            'password' => bcrypt('password'),
-            'is_superuser' => true,
-        ]);
+        $admin = User::updateOrCreate(
+            ['email' => 'adminhara1@gmail.com'],
+            [
+                'name' => 'Admin',
+                'password' => bcrypt('password'),
+                'is_superuser' => true,
+            ]
+        );
         $admin->assignRole('admin');
 
-        $teraphist = User::create([
-            'name' => 'Teraphist',
-            'email' => 'teraphisthara1@gmail.com',
-            'password' => bcrypt('password'),
-        ]);
+        $teraphist = User::updateOrCreate(
+            ['email' => 'teraphisthara1@gmail.com'],
+            [
+                'name' => 'Teraphist',
+                'password' => bcrypt('password'),
+            ]
+        );
         $teraphist->assignRole('therapist');
     }
 }

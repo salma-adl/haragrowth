@@ -14,23 +14,23 @@ class RolePermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        Permission::create(['name' => 'view users']);
-        Permission::create(['name' => 'create users']);
-        Permission::create(['name' => 'edit users']);
-        Permission::create(['name' => 'delete users']);
+        Permission::firstOrCreate(['name' => 'view users']);
+        Permission::firstOrCreate(['name' => 'create users']);
+        Permission::firstOrCreate(['name' => 'edit users']);
+        Permission::firstOrCreate(['name' => 'delete users']);
         
-        Permission::create(['name' => 'view roles']);
-        Permission::create(['name' => 'create roles']);
-        Permission::create(['name' => 'edit roles']);
-        Permission::create(['name' => 'delete roles']);
+        Permission::firstOrCreate(['name' => 'view roles']);
+        Permission::firstOrCreate(['name' => 'create roles']);
+        Permission::firstOrCreate(['name' => 'edit roles']);
+        Permission::firstOrCreate(['name' => 'delete roles']);
 
-        Permission::create(['name' => 'view permissions']);
-        Permission::create(['name' => 'create permissions']);
-        Permission::create(['name' => 'edit permissions']);
-        Permission::create(['name' => 'delete permissions']);
+        Permission::firstOrCreate(['name' => 'view permissions']);
+        Permission::firstOrCreate(['name' => 'create permissions']);
+        Permission::firstOrCreate(['name' => 'edit permissions']);
+        Permission::firstOrCreate(['name' => 'delete permissions']);
 
-        Role::create(['name' => 'admin'])
-            ->givePermissionTo([
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $adminRole->givePermissionTo([
                 'view users',
                 'create users',
                 'edit users',
@@ -45,8 +45,8 @@ class RolePermissionSeeder extends Seeder
                 'delete permissions'
             ]);
 
-        Role::create(['name' => 'therapist'])
-            ->givePermissionTo([
+        $therapistRole = Role::firstOrCreate(['name' => 'therapist']);
+        $therapistRole->givePermissionTo([
                 'view users',
                 'edit users',
                 'view roles',
