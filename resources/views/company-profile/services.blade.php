@@ -24,7 +24,7 @@
 
 {{-- List Layanan --}}
 <section class="py-10 px-6 bg-[#FFF8E7] min-h-screen">
-    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
         @foreach($services as $service)
         <div class="bg-white rounded-3xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden flex flex-col xl:flex-row h-full">
             {{-- Gambar Layanan --}}
