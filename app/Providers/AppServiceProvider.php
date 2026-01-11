@@ -8,6 +8,7 @@ use App\Policies\TherapistSchedulePolicy;
 use App\Policies\UserProfilePolicy;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (env('APP_ENV') !== 'local') {
+            URL::forceScheme('https');
+        }
+
         Gate::policy(UserProfile::class, UserProfilePolicy::class);
         Gate::policy(TherapistSchedule::class, TherapistSchedulePolicy::class);
 
