@@ -123,3 +123,29 @@ Route::get('/debug-db', function () {
     }
 });
 
+Route::get('/run-seeder', function () {
+    try {
+        // Clear permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        
+        $output = '';
+        
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $output .= "Migrate output:\n" . \Illuminate\Support\Facades\Artisan::output() . "\n";
+        
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        $output .= "Seed output:\n" . \Illuminate\Support\Facades\Artisan::output() . "\n";
+        
+        return response()->json([
+            'status' => 'success',
+            'output' => $output,
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
+});
+
