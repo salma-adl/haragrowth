@@ -12,6 +12,11 @@ class BookingByServiceChart extends ChartWidget
 
     protected static ?int $sort = 3;
 
+    public static function canView(): bool
+    {
+        return !auth()->user()->hasRole('therapist');
+    }
+
     protected function getData(): array
     {
         $startDate = Carbon::today()->subDays(365);

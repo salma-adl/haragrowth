@@ -13,6 +13,10 @@ class BookingPolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole('therapist')) {
+            return true;
+        }
+
         if (auth()->user()->can('view-booking')) {
             return true;
         } else {
@@ -25,6 +29,14 @@ class BookingPolicy
      */
     public function view(User $user, Booking $booking): bool
     {
+        if ($user->hasRole('admin') || $user->is_superuser) {
+            return true;
+        }
+
+        if ($user->hasRole('therapist')) {
+            return $user->profile && $booking->user_profile_id === $user->profile->id;
+        }
+
         if (auth()->user()->can('view-booking')) {
             return true;
         } else {
@@ -49,6 +61,14 @@ class BookingPolicy
      */
     public function update(User $user, Booking $booking): bool
     {
+        if ($user->hasRole('admin') || $user->is_superuser) {
+            return true;
+        }
+
+        if ($user->hasRole('therapist')) {
+            return $user->profile && $booking->user_profile_id === $user->profile->id;
+        }
+
         // Cek apakah user memiliki izin (permission) 'update-booking'
         if (auth()->user()->can('update-booking')) {
             return true;

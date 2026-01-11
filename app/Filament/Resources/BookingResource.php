@@ -20,12 +20,33 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\SelectColumn;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\Section as InfoSection;
+use Filament\Infolists\Components\Grid as InfoGrid;
 
 class BookingResource extends Resource
 {
     protected static ?string $model = Booking::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        if ($user && $user->hasRole('therapist') && !$user->hasRole('admin') && !$user->is_superuser) {
+            if ($user->profile) {
+                $query->where('user_profile_id', $user->profile->id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        return $query;
+    }
 
     public static function getPluralLabel(): string
     {
@@ -41,39 +62,133 @@ class BookingResource extends Resource
                         TextInput::make('booking_code')
                             ->label('Kode Booking')
                             ->disabled()
-                            ->required(),
+                            ->required()
+                            ->visible(fn(string $operation) => $operation === 'edit'),
 
                         Section::make('Data Pasien')
                             ->description('Periksa data customer dan pastikan data telah sesuai.')
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
+                                        // Create mode - input fields
+                                        TextInput::make('customer_name')
+                                            ->label('Nama')
+                                            ->required()
+                                            ->visible(fn(string $operation) => $operation === 'create'),
+                                        
+                                        TextInput::make('customer_email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->required()
+                                            ->visible(fn(string $operation) => $operation === 'create'),
+                                        
+                                        TextInput::make('customer_phone')
+                                            ->label('Telepon')
+                                            ->tel()
+                                            ->required()
+                                            ->visible(fn(string $operation) => $operation === 'create'),
+                                        
+                                        TextInput::make('customer_age')
+                                            ->label('Usia')
+                                            ->numeric()
+                                            ->suffix('tahun')
+                                            ->required()
+                                            ->visible(fn(string $operation) => $operation === 'create'),
+                                        
+                                        Select::make('customer_gender')
+                                            ->label('Jenis Kelamin')
+                                            ->options([
+                                                'L' => 'Laki-laki',
+                                                'P' => 'Perempuan',
+                                            ])
+                                            ->required()
+                                            ->visible(fn(string $operation) => $operation === 'create'),
+                                        
+                                        // Edit mode - placeholders
                                         Placeholder::make('customer_name')
                                             ->label('Nama')
                                             ->content(fn($record) => $record->customer?->name ?? '-')
+                                            ->visible(fn(string $operation) => $operation === 'edit')
                                             ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
 
                                         Placeholder::make('customer_email')
                                             ->label('Email')
                                             ->content(fn($record) => $record->customer?->email ?? '-')
+                                            ->visible(fn(string $operation) => $operation === 'edit')
+                                            ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
+
+                                        Placeholder::make('customer_phone')
+                                            ->label('Telepon')
+                                            ->content(fn($record) => $record->customer?->phone ?? '-')
+                                            ->visible(fn(string $operation) => $operation === 'edit')
                                             ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
 
                                         Placeholder::make('customer_age')
                                             ->label('Usia')
-                                            ->content(fn($record) => $record->customer?->age ?? '-')
+                                            ->content(fn($record) => $record->customer?->age ? $record->customer->age . ' tahun' : '-')
+                                            ->visible(fn(string $operation) => $operation === 'edit')
+                                            ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
+
+                                        Placeholder::make('customer_gender')
+                                            ->label('Jenis Kelamin')
+                                            ->content(fn($record) => $record->customer?->gender == 'L' ? 'Laki-laki' : ($record->customer?->gender == 'P' ? 'Perempuan' : '-'))
+                                            ->visible(fn(string $operation) => $operation === 'edit')
                                             ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
                                     ])
                             ]),
 
                         Section::make('Konsultasi Pasien')
                             ->schema([
+                                // Create mode - input fields
+                                Select::make('service_id')
+                                    ->label('Layanan')
+                                    ->relationship('service', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->visible(fn(string $operation) => $operation === 'create')
+                                    ->reactive()
+                                    ->afterStateUpdated(fn(callable $set) => $set('schedule_id', null)),
+                                
+                                Select::make('schedule_id')
+                                    ->label('Jadwal')
+                                    ->options(function (callable $get) {
+                                        $serviceId = $get('service_id');
+                                        if (!$serviceId) {
+                                            return [];
+                                        }
+
+                                        return \App\Models\Schedule::where('service_id', $serviceId)
+                                            ->where('is_active', true)
+                                            ->whereDoesntHave('bookings', function ($query) {
+                                                $query->whereIn('status', ['booked', 'in_session']);
+                                            })
+                                            ->get()
+                                            ->mapWithKeys(function ($schedule) {
+                                                $label = "{$schedule->available_day} ({$schedule->start_time} - {$schedule->end_time})";
+                                                return [$schedule->id => $label];
+                                            });
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->visible(fn(string $operation) => $operation === 'create'),
+                                
+                                TextInput::make('notes')
+                                    ->label('Catatan')
+                                    ->visible(fn(string $operation) => $operation === 'create')
+                                    ->columnSpanFull(),
+                                
+                                // Edit mode - placeholders
                                 Placeholder::make('service_name')
                                     ->label('Konsultasi')
                                     ->content(fn($record) => $record->service?->name ?? '-')
+                                    ->visible(fn(string $operation) => $operation === 'edit')
                                     ->extraAttributes(['class' => 'border border-gray-300 rounded-md p-2 bg-white']),
+                                
                                 Placeholder::make('notes')
                                     ->label('Catatan')
                                     ->content(fn($record) => $record->notes ?? '-')
+                                    ->visible(fn(string $operation) => $operation === 'edit')
                                     ->extraAttributes([
                                         'class' => 'border border-gray-300 rounded-md p-2 bg-white',
                                     ]),
@@ -81,6 +196,7 @@ class BookingResource extends Resource
 
                         Section::make('Hasil Terapi')
                             ->description('*Catat hasil tindakan dan hal yang perlu pasien perhatikan setelah menjalankan terapi.')
+                            ->visible(fn(string $operation) => $operation === 'edit')
                             ->schema([
                                 Grid::make(1)
                                     ->schema([
@@ -99,14 +215,15 @@ class BookingResource extends Resource
                                                             ->pluck('name', 'id');
                                                     })
                                                     ->searchable()
-                                                    ->required(),
+                                                    ->required()
+                                                    ->disabled(fn () => auth()->user()->hasRole('therapist')),
                                             ])
                                             ->columnSpanFull(),
                                         Card::make()
                                             ->schema([
                                                 RichEditor::make('diagnosis')
                                                     ->label('Diagnosa')
-                                                    ->required()
+                                                    ->disabled(fn () => auth()->user()->hasRole('admin'))
                                                     ->toolbarButtons([
                                                         'bold',
                                                         'italic',
@@ -129,7 +246,7 @@ class BookingResource extends Resource
                                             ->schema([
                                                 RichEditor::make('therapist_notes')
                                                     ->label('Catatan Terapis')
-                                                    ->required()
+                                                    ->disabled(fn () => auth()->user()->hasRole('admin'))
                                                     ->toolbarButtons([
                                                         'bold',
                                                         'italic',
@@ -152,7 +269,7 @@ class BookingResource extends Resource
                                             ->schema([
                                                 RichEditor::make('recommendation')
                                                     ->label('Rekomendasi')
-                                                    ->required()
+                                                    ->disabled(fn () => auth()->user()->hasRole('admin'))
                                                     ->toolbarButtons([
                                                         'bold',
                                                         'italic',
@@ -172,6 +289,46 @@ class BookingResource extends Resource
                                             ->columnSpanFull(),
                                     ]),
                             ])
+                    ]),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                InfoSection::make('Data Pasien')
+                    ->schema([
+                        InfoGrid::make(3)
+                            ->schema([
+                                TextEntry::make('customer.name')->label('Nama'),
+                                TextEntry::make('customer.email')->label('Email'),
+                                TextEntry::make('customer.phone')->label('Telepon'),
+                                TextEntry::make('customer.age')->label('Usia')->suffix(' tahun'),
+                                TextEntry::make('customer.gender')
+                                    ->label('Jenis Kelamin')
+                                    ->formatStateUsing(fn ($state) => match ($state) {
+                                        'L' => 'Laki-laki',
+                                        'P' => 'Perempuan',
+                                        default => '-',
+                                    }),
+                            ]),
+                    ]),
+                InfoSection::make('Konsultasi Pasien')
+                    ->schema([
+                        TextEntry::make('service.name')->label('Layanan'),
+                        TextEntry::make('schedule_info')
+                            ->label('Jadwal')
+                            ->getStateUsing(fn ($record) => $record->schedule ? "{$record->schedule->available_day} ({$record->schedule->start_time} - {$record->schedule->end_time})" : '-'),
+                        TextEntry::make('notes')->label('Catatan'),
+                    ]),
+                InfoSection::make('Hasil Terapi')
+                    ->visible(fn ($record) => $record->status === 'completed' || $record->diagnosis)
+                    ->schema([
+                        TextEntry::make('userProfile.name')->label('Terapis'),
+                        TextEntry::make('diagnosis')->html()->label('Diagnosa'),
+                        TextEntry::make('therapist_notes')->html()->label('Catatan Terapis'),
+                        TextEntry::make('recommendation')->html()->label('Rekomendasi'),
                     ]),
             ]);
     }

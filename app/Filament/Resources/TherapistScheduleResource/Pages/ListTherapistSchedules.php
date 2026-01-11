@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TherapistScheduleResource\Pages;
 
 use App\Filament\Resources\TherapistScheduleResource;
+use App\Filament\Resources\TherapistScheduleResource\Widgets\TherapistCalendarWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -14,6 +15,13 @@ class ListTherapistSchedules extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            TherapistCalendarWidget::class,
         ];
     }
 }

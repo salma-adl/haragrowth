@@ -48,6 +48,11 @@ class BookingController extends Controller
             'g-recaptcha-response' => 'required',
         ]);
 
+        // Check if the time slot is already booked
+        if (!$this->isTimeSlotAvailable($validatedData['schedule_id'])) {
+            return redirect()->back()->withErrors(['schedule_id' => 'Jadwal ini sudah dipesan. Silakan pilih jadwal lain.'])->withInput();
+        }
+
         // Verifikasi CAPTCHA
         $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
             'secret' => env('RECAPTCHA_SECRET_KEY'),
@@ -151,5 +156,18 @@ class BookingController extends Controller
         $randomPart = strtoupper(substr(md5(uniqid(rand(), true)), 0, 6)); // 6 karakter acak
 
         return $prefix . '-' . $datePart . '-' . $randomPart;
+    }
+
+    /**
+     * Check if a time slot is available for booking.
+     *
+     * @param  int  $scheduleId
+     * @return bool
+     */
+    protected function isTimeSlotAvailable($scheduleId): bool
+    {
+        return !Booking::where('schedule_id', $scheduleId)
+            ->whereIn('status', ['booked', 'in_session'])
+            ->exists();
     }
 }

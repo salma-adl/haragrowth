@@ -11,7 +11,7 @@ class News extends Model
 {
     use HasFactory, InteractsWithMedia;
 
-    protected $fillable = ['title', 'description', 'attachment'];
+    protected $fillable = ['title', 'description', 'attachment', 'link'];
 
     protected static function booted()
     {

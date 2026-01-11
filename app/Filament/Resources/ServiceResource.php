@@ -35,6 +35,10 @@ class ServiceResource extends Resource
                     ->schema([
                         TextInput::make('name')
                             ->required(),
+                        TextInput::make('price')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->required(),
                         Textarea::make('summary')
                             ->required(),
                         RichEditor::make('description')

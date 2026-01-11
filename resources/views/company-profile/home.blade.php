@@ -15,7 +15,8 @@
             <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#3B2E2B]">Selamat Datang di</h1>
             <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#3B2E2B] leading-tight">
                 <span class="text-[#00C4B4]">Hara Growth</span>,<br>
-                Pusat Tumbuh Kembang Anak
+                Pusat Tumbuh<br>
+                Kembang Anak
             </h2>
             <a href="#form" class="inline-block bg-[#fbc02d] hover:bg-[#00a39c] text-black px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-semibold shadow transition duration-300 ease-in-out">
                 Buat Janji Temu
@@ -48,7 +49,11 @@
                         x-transition:leave="opacity-100"
                         x-transition:leave-end="opacity-0">
                         <img :src="slide.attachment" alt="" class="w-full h-full object-cover object-center">
-                        <div class="absolute inset-0 bg-black bg-opacity-40 flex flex-col justify-end p-4 sm:p-6 text-white">
+                        <div 
+                            class="absolute inset-0 bg-black bg-opacity-40 flex flex-col justify-end p-4 sm:p-6 text-white"
+                            :class="{ 'cursor-pointer hover:bg-opacity-50': slide.link }"
+                            @click="if(slide.link) window.open(slide.link, '_blank')"
+                        >
                             <h3 class="text-base sm:text-lg font-bold" x-text="slide.title"></h3>
                             <p class="text-xs sm:text-sm" x-text="slide.description"></p>
                         </div>
@@ -137,7 +142,7 @@
     <p class="text-[#3B2E2B] mb-10">Berbagai layanan psikologi dan terapi yang dirancang khusus untuk mendukung tumbuh kembang anak secara optimal.</p>
 
     <div class="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto text-left">
-        @foreach($mService as $service)
+        @foreach($mService->take(3) as $service)
         <div class="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition">
             <img src="{{ asset('storage/' . $service->attachment) }}" alt="{{ $service['title'] }}" class="w-full h-48 object-cover" />
             <div class="p-5">
@@ -152,6 +157,12 @@
         </div>
         @endforeach
     </div>
+    </div>
+    <div class="mt-50">
+        <a href="{{ route('company.services') }}" 
+           class="inline-block border border-[#3B2E2B] text-[#3B2E2B] px-4 py-2 rounded-md hover:bg-[#3B2E2B] hover:text-white transition">
+            Lihat Semua Layanan
+        </a>
 </section>
 <!-- Modal -->
 <div id="serviceModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-start pt-24 overflow-y-auto">
@@ -194,7 +205,7 @@
             @foreach($experts as $expert)
             <div onclick="fetchTherapist({{ $expert->id }})"
                 class="cursor-pointer flex-shrink-0 w-[300px] bg-white rounded-xl overflow-hidden shadow-lg relative group hover:scale-105 transition duration-300">
-                <img src="{{ asset('storage/...' .$expert['attachment']) }}" alt="{{ $expert['name'] }}"
+                <img src="{{ asset('storage/' . $expert['attachment']) }}" alt="{{ $expert['name'] }}"
                     class="w-full h-[400px] object-cover object-center" />
 
                 <div class="absolute text-left bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent px-4 py-4 text-white">
@@ -426,11 +437,32 @@
                         $('#scheduleSelect').empty().append('<option value="">Pilih Jadwal</option>');
                         if (schedules.length > 0) {
                             $.each(schedules, function(i, schedule) {
-                                $('#scheduleSelect').append(
-                                    `<option value="${schedule.id}">
-                                        ${schedule.available_day}, ${schedule.start_time} - ${schedule.end_time}
-                                     </option>`
-                                );
+                                // Check availability for each schedule
+                                $.ajax({
+                                    url: `/check-schedule-availability/${schedule.id}`,
+                                    type: 'GET',
+                                    async: false, // Make it synchronous to ensure proper ordering
+                                    success: function(availability) {
+                                        const isAvailable = availability.is_available;
+                                        const optionText = isAvailable 
+                                            ? `${schedule.available_day}, ${schedule.start_time} - ${schedule.end_time}`
+                                            : `${schedule.available_day}, ${schedule.start_time} - ${schedule.end_time} (TIDAK TERSEDIA)`;
+                                        
+                                        $('#scheduleSelect').append(
+                                            `<option value="${schedule.id}" ${!isAvailable ? 'disabled' : ''}>
+                                                ${optionText}
+                                             </option>`
+                                        );
+                                    },
+                                    error: function() {
+                                        // If availability check fails, show as available by default
+                                        $('#scheduleSelect').append(
+                                            `<option value="${schedule.id}">
+                                                ${schedule.available_day}, ${schedule.start_time} - ${schedule.end_time}
+                                             </option>`
+                                        );
+                                    }
+                                });
                             });
                         } else {
                             $('#scheduleSelect').append('<option value="">Tidak ada jadwal tersedia</option>');
@@ -573,12 +605,21 @@
 <!-- Modal Psikolog -->
 <script>
     function fetchTherapist(id) {
+        console.log('Fetching therapist with ID:', id);
         fetch(`/therapist/${id}`)
-            .then(res => res.json())
+            .then(res => {
+                console.log('Response status:', res.status);
+                return res.json();
+            })
             .then(data => {
                 const therapist = data;
-                if (!therapist) return;
+                console.log('Therapist data:', therapist);
+                if (!therapist) {
+                    console.log('No therapist data found');
+                    return;
+                }
 
+                console.log('Setting image src to:', therapist.attachment);
                 document.getElementById('therapistImage').src = therapist.attachment || '';
                 document.getElementById('therapistName').textContent = therapist.name;
                 document.getElementById('therapistStr').textContent = therapist.str_number || '-';
@@ -605,6 +646,9 @@
                 setTimeout(() => {
                     content.classList.add('scale-100', 'opacity-100');
                 }, 10);
+            })
+            .catch(err => {
+                console.error('Error fetching therapist:', err);
             });
     }
 

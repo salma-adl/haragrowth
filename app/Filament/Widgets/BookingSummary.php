@@ -17,6 +17,11 @@ class BookingSummary extends Widget
     public $inSessionVisitors;
     public $finishedToday;
 
+    public static function canView(): bool
+    {
+        return !auth()->user()->hasRole('therapist');
+    }
+
     public function mount(): void
     {
         $today = Carbon::today();

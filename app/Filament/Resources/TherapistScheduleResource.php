@@ -12,6 +12,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TimePicker;
+use Filament\Tables\Columns\TextColumn;
 
 class TherapistScheduleResource extends Resource
 {
@@ -23,7 +27,25 @@ class TherapistScheduleResource extends Resource
     {
         return $form
             ->schema([
-                //
+                Select::make('therapist_id')
+                    ->relationship('therapist', 'name')
+                    ->default(fn () => auth()->user()->hasRole('therapist') ? auth()->id() : null)
+                    ->disabled(fn () => auth()->user()->hasRole('therapist'))
+                    ->dehydrated()
+                    ->required()
+                    ->label('Therapist')
+                    ->searchable()
+                    ->preload(),
+                DatePicker::make('available_date')
+                    ->required()
+                    ->native(false)
+                    ->displayFormat('d M Y'),
+                TimePicker::make('start_time')
+                    ->required()
+                    ->seconds(false),
+                TimePicker::make('end_time')
+                    ->required()
+                    ->seconds(false),
             ]);
     }
 
@@ -31,19 +53,44 @@ class TherapistScheduleResource extends Resource
     {
         return $table
             ->columns([
-                //
+                TextColumn::make('therapist.name')
+                    ->label('Therapist')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('available_date')
+                    ->date('d M Y')
+                    ->sortable(),
+                TextColumn::make('start_time')
+                    ->time('H:i')
+                    ->sortable(),
+                TextColumn::make('end_time')
+                    ->time('H:i')
+                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        if ($user && $user->hasRole('therapist') && !$user->hasRole('admin') && !$user->is_superuser) {
+             $query->where('therapist_id', $user->id);
+        }
+
+        return $query;
     }
 
     public static function getRelations(): array

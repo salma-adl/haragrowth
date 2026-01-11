@@ -26,7 +26,11 @@ class PermissionHelper
 {
     public static function canViewMenu(): bool
     {
-        return Auth::check() && Auth::user()->can('view users');
+        if (!Auth::check()) {
+            return false;
+        }
+        $user = Auth::user();
+        return $user->can('view users') || $user->can('view therapists') || $user->hasRole('therapist');
     }
 
     public static function canViewPermissions(): bool

@@ -70,7 +70,7 @@ Route::get('/api/industry', [IndustryController::class, 'index']);
 Route::get('/api/schedule-service', [ServiceController::class, 'index']);
 
 Route::get('/', [CompanyProfileController::class, 'home']);
-
+Route::get('/layanan', [CompanyProfileController::class, 'services'])->name('company.services');
 Route::get('/get-schedules/{service_id}', [CompanyProfileController::class, 'getSchedules']);
 
 // Route::post('/buat-janji', [CompanyProfileController::class, 'submitJanji'])->name('buat.janji');
@@ -81,6 +81,8 @@ Route::get('/psychologists/{serviceId}', [CompanyProfileController::class, 'getT
 
 Route::get('/therapist/{id}', [CompanyProfileController::class, 'getTherapisByid']);
 
+Route::get('/check-schedule-availability/{scheduleId}', [CompanyProfileController::class, 'checkScheduleAvailability']);
+
 Route::get('/book/{booking_code}', function ($booking_code) {
     $booking = Booking::where('booking_code', $booking_code)->first();
 
@@ -90,3 +92,15 @@ Route::get('/book/{booking_code}', function ($booking_code) {
 
     return view('company-profile.book', compact('booking'));
 });
+
+// Test route for email preview
+Route::get('/test-email', function () {
+    $customerData = [
+        'name' => 'John Doe',
+        'booking_code' => 'HG-20260111-TEST123',
+        'url_book' => url('/book'),
+    ];
+
+    return new \App\Mail\CustomerNotification($customerData);
+});
+

@@ -22,13 +22,26 @@ class CompanyProfileController extends Controller
         return view('company-profile.home', compact('mService', 'schedules', 'experts', 'news'));
     }
 
+    public function services()
+    {
+        $services = Service::with('userProfiles')->get();
+        return view('company-profile.services', compact('services'));
+    }
+
     public function getSchedules($service_id)
     {
         if (!Service::find($service_id)) {
             return response()->json(['error' => 'Service not found'], 404);
         }
 
-        $schedules = Schedule::where('service_id', $service_id)->get();
+        // Get only available schedules (not booked and active)
+        $schedules = Schedule::where('service_id', $service_id)
+            ->where('is_active', true)
+            ->whereDoesntHave('bookings', function ($query) {
+                $query->whereIn('status', ['booked', 'in_session']);
+            })
+            ->get();
+        
         return response()->json($schedules);
     }
 
@@ -67,6 +80,25 @@ class CompanyProfileController extends Controller
             'sipp_number' => $therapist->sipp_number,
             'bio' => $therapist->bio,
             'services' => $therapist->services->pluck('name')->toArray(), // array nama layanan
+        ]);
+    }
+
+    public function checkScheduleAvailability($scheduleId)
+    {
+        $schedule = Schedule::find($scheduleId);
+        
+        if (!$schedule) {
+            return response()->json(['error' => 'Jadwal tidak ditemukan'], 404);
+        }
+
+        $isAvailable = !$schedule->bookings()
+            ->whereIn('status', ['booked', 'in_session'])
+            ->exists();
+
+        return response()->json([
+            'schedule_id' => $scheduleId,
+            'is_available' => $isAvailable,
+            'message' => $isAvailable ? 'Jadwal tersedia' : 'Jadwal sudah dipesan'
         ]);
     }
 }

@@ -12,7 +12,7 @@ class Service extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia;
 
-    protected $fillable = ['name', 'summary', 'description', 'attachment'];
+    protected $fillable = ['name', 'summary', 'description', 'attachment', 'price'];
 
     public function userProfiles()
     {

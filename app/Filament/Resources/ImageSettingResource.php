@@ -51,18 +51,19 @@ class ImageSettingResource extends Resource
                     ])
                     ->required(),
                 FileUpload::make('attachment')
-                    // ->image()
+                    ->image()
+                    ->disk('public')
                     ->openable()
                     ->downloadable()
                     ->required()
                     ->label('Image'),
                 FileUpload::make('dark_attachment')
-                    // ->image()
+                    ->image()
+                    ->disk('public')
                     ->openable()
                     ->downloadable()
                     ->required()
                     ->label('Image Dark Mode')
-                    ->disk('public')
                     ->hint('upload the same image if there is no dark mode'),    
                 Toggle::make('is_dark_mode'),
             ])

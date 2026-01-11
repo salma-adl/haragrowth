@@ -11,6 +11,7 @@ use App\Filament\Resources\NewsResource;
 use App\Filament\Resources\ScheduleResource;
 use App\Filament\Resources\ServiceResource;
 use App\Filament\Resources\SubMenuResource;
+use App\Filament\Resources\TherapistScheduleResource;
 use App\Filament\Resources\UserProfileResource;
 use App\Filament\Resources\UserResource;
 use App\Policies\PermissionHelper;
@@ -71,6 +72,25 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugin(FilamentSpatieRolesPermissionsPlugin::make())
             ->navigation(function (NavigationBuilder $builder): NavigationBuilder {
+                $user = auth()->user();
+                if ($user && $user->hasRole('therapist') && !$user->hasRole('admin') && !$user->is_superuser) {
+                    return $builder->groups([
+                        NavigationGroup::make()
+                            ->items([
+                                NavigationItem::make('Dashboard')
+                                    ->icon('heroicon-o-home')
+                                    ->isActiveWhen(fn(): bool => request()->routeIs('filament.admin.pages.dashboard'))
+                                    ->url(route('filament.admin.pages.dashboard'))
+                                    ->activeIcon('heroicon-s-home'),
+                            ]),
+                        NavigationGroup::make('Therapist Menu')
+                            ->items([
+                                ...BookingResource::getNavigationItems(),
+                                ...TherapistScheduleResource::getNavigationItems(),
+                            ]),
+                    ]);
+                }
+
                 return $builder->groups([
                     NavigationGroup::make()
                         ->items([
@@ -92,6 +112,7 @@ class AdminPanelProvider extends PanelProvider
                             ...BookingResource::getNavigationItems(),
                             ...ServiceResource::getNavigationItems(),
                             ...ScheduleResource::getNavigationItems(),
+                            ...TherapistScheduleResource::getNavigationItems(),
                         ]),
                     // NavigationGroup::make('Users and Permissions')
                     //     ->items([

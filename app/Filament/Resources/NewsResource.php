@@ -34,6 +34,9 @@ class NewsResource extends Resource
                     ->schema([
                         TextInput::make('title')
                             ->required(),
+                        TextInput::make('link')
+                            ->url()
+                            ->label('Link Instagram/External'),
                         Textarea::make('description')
                             ->required(),
                         FileUpload::make('attachment')->image()->openable()->downloadable()->disk('public'), // Pastikan menggunakan disk 'public',

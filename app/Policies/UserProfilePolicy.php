@@ -4,88 +4,91 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\UserProfile;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class UserProfilePolicy
 {
+    use HandlesAuthorization;
+
     /**
      * Determine whether the user can view any models.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function viewAny(User $user): bool
+    public function viewAny(User $user)
     {
-        if (auth()->user()->can('view-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('view therapists');
     }
 
     /**
      * Determine whether the user can view the model.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\UserProfile  $userProfile
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function view(User $user, UserProfile $userProfile): bool
+    public function view(User $user, UserProfile $userProfile)
     {
-        if (auth()->user()->can('view-detail-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('view therapists');
     }
 
     /**
      * Determine whether the user can create models.
+     *
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function create(User $user): bool
+    public function create(User $user)
     {
-        if (auth()->user()->can('create-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('create therapists');
     }
 
     /**
      * Determine whether the user can update the model.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\UserProfile  $userProfile
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function update(User $user, UserProfile $userProfile): bool
+    public function update(User $user, UserProfile $userProfile)
     {
-        return $user->can('edit-full-profile') ? true : $user->id === $userProfile->user_id && $user->can('edit-profile');
+        return $user->can('edit therapists');
     }
-
 
     /**
      * Determine whether the user can delete the model.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\UserProfile  $userProfile
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function delete(User $user, UserProfile $userProfile): bool
+    public function delete(User $user, UserProfile $userProfile)
     {
-        if (auth()->user()->can('delete-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('delete therapists');
     }
 
     /**
      * Determine whether the user can restore the model.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\UserProfile  $userProfile
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function restore(User $user, UserProfile $userProfile): bool
+    public function restore(User $user, UserProfile $userProfile)
     {
-        if (auth()->user()->can('delete-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('delete therapists');
     }
 
     /**
      * Determine whether the user can permanently delete the model.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\UserProfile  $userProfile
+     * @return \Illuminate\Auth\Access\Response|bool
      */
-    public function forceDelete(User $user, UserProfile $userProfile): bool
+    public function forceDelete(User $user, UserProfile $userProfile)
     {
-        if (auth()->user()->can('delete-profile')) {
-            return true;
-        } else {
-            return false;
-        }
+        return $user->can('delete therapists');
     }
 }
