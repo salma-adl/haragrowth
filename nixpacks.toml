@@ -5,7 +5,7 @@ nixPkgs = ["php82", "php82Extensions.pdo_mysql", "php82Extensions.bcmath", "php8
 cmds = [
     "npm install",
     "npm run build",
-    "composer install --no-dev --optimize-autoloader --no-interaction --no-progress"
+    "composer install --no-dev --optimize-autoloader --no-interaction --no-progress --ignore-platform-req=ext-intl --ignore-platform-req=ext-zip --ignore-platform-req=ext-exif"
 ]
 
 [phases.start]
