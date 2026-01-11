@@ -116,12 +116,15 @@ Route::get('/debug-queue', function () {
 });
 
 Route::post('/process-queue', function () {
+    // Increase execution time to prevent timeout during SMTP handshake
+    set_time_limit(120);
+    
     try {
         // Run the worker for one job or until empty
         \Illuminate\Support\Facades\Artisan::call('queue:work', [
             '--stop-when-empty' => true,
             '--tries' => 3,
-            '--timeout' => 60
+            '--timeout' => 90 // Job timeout
         ]);
         
         return redirect('/debug-queue')->with('status', 'Queue processed successfully!');
