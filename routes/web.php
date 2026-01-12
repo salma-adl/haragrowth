@@ -168,6 +168,7 @@ Route::get('/debug-queue', function () {
         return response()->json([
             'mail' => [
                 'default_mailer' => config('mail.default'),
+                'smtp_transport_driver' => config('mail.mailers.smtp.transport'),
                 'from' => config('mail.from'),
                 'active_db_configuration' => $activeMailConfig ? [
                     'mail_host' => $activeMailConfig->mail_host,
