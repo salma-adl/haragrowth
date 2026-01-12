@@ -106,61 +106,95 @@ Route::get('/test-email', function () {
 
 Route::get('/debug-queue', function () {
     try {
+        $activeMailConfig = \App\Models\MailConfiguration::where('is_active', true)->first();
+
+        $smtpHost = $activeMailConfig?->mail_host ?? config('mail.mailers.smtp.host');
+        $smtpPorts = [587, 465];
+        $smtpConnectivity = [];
+
+        foreach ($smtpPorts as $port) {
+            try {
+                $errno = 0;
+                $errstr = '';
+                $fp = @fsockopen($smtpHost, $port, $errno, $errstr, 3);
+                if ($fp) {
+                    fclose($fp);
+                    $smtpConnectivity[(string) $port] = [
+                        'ok' => true,
+                        'message' => "Connected to {$smtpHost}:{$port}",
+                    ];
+                } else {
+                    $smtpConnectivity[(string) $port] = [
+                        'ok' => false,
+                        'message' => "Failed to connect to {$smtpHost}:{$port} - {$errno}: {$errstr}",
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $smtpConnectivity[(string) $port] = [
+                    'ok' => false,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        $resendKeyConfigured = (bool) config('services.resend.key');
+        $resendApi = [
+            'configured' => $resendKeyConfigured,
+            'ok' => null,
+            'status' => null,
+            'body' => null,
+            'error' => null,
+        ];
+
+        if ($resendKeyConfigured) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken(config('services.resend.key'))
+                    ->acceptJson()
+                    ->timeout(5)
+                    ->get('https://api.resend.com/domains');
+
+                $resendApi['ok'] = $response->successful();
+                $resendApi['status'] = $response->status();
+                $resendApi['body'] = mb_strimwidth($response->body(), 0, 500, '...');
+            } catch (\Throwable $e) {
+                $resendApi['ok'] = false;
+                $resendApi['error'] = $e->getMessage();
+            }
+        }
+
         $pendingJobs = \DB::table('jobs')->get();
         $failedJobs = \DB::table('failed_jobs')->orderBy('id', 'desc')->take(5)->get();
-        $mailConfig = \App\Models\MailConfiguration::where('is_active', true)->first();
         
-        // Test SMTP Connection (Port 587)
-        $connectionStatus587 = 'Untested';
-        try {
-            $host = $mailConfig ? $mailConfig->mail_host : env('MAIL_HOST', 'smtp.gmail.com');
-            $fp = fsockopen($host, 587, $errno, $errstr, 5);
-            if ($fp) {
-                $connectionStatus587 = "Connected to $host:587 successfully";
-                fclose($fp);
-            } else {
-                $connectionStatus587 = "Failed to connect to $host:587 - $errno: $errstr";
-            }
-        } catch (\Exception $e) {
-            $connectionStatus587 = "Exception (587): " . $e->getMessage();
-        }
-
-        // Test SMTP Connection (Port 465)
-        $connectionStatus465 = 'Untested';
-        try {
-            $host = $mailConfig ? $mailConfig->mail_host : env('MAIL_HOST', 'smtp.gmail.com');
-            $fp = fsockopen($host, 465, $errno, $errstr, 5);
-            if ($fp) {
-                $connectionStatus465 = "Connected to $host:465 successfully";
-                fclose($fp);
-            } else {
-                $connectionStatus465 = "Failed to connect to $host:465 - $errno: $errstr";
-            }
-        } catch (\Exception $e) {
-            $connectionStatus465 = "Exception (465): " . $e->getMessage();
-        }
-
-        return view('debug-queue', compact('pendingJobs', 'failedJobs', 'mailConfig', 'connectionStatus587', 'connectionStatus465'));
+        return response()->json([
+            'mail' => [
+                'default_mailer' => config('mail.default'),
+                'from' => config('mail.from'),
+                'active_db_configuration' => $activeMailConfig ? [
+                    'mail_host' => $activeMailConfig->mail_host,
+                    'mail_port' => $activeMailConfig->mail_port,
+                    'mail_username' => $activeMailConfig->mail_username,
+                    'mail_encryption' => $activeMailConfig->mail_encryption,
+                    'mail_from_address' => $activeMailConfig->mail_from_address,
+                    'mail_from_name' => $activeMailConfig->mail_from_name,
+                    'is_active' => $activeMailConfig->is_active,
+                ] : null,
+                'smtp_connectivity' => $smtpConnectivity,
+                'resend' => $resendApi,
+            ],
+            'pending_jobs_count' => $pendingJobs->count(),
+            'pending_jobs' => $pendingJobs,
+            'failed_jobs_count' => $failedJobs->count(),
+            'latest_failed_jobs' => $failedJobs->map(function($job) {
+                return [
+                    'id' => $job->id,
+                    'connection' => $job->connection,
+                    'queue' => $job->queue,
+                    'exception' => mb_strimwidth($job->exception, 0, 500, '...'), // Truncate long exception
+                    'failed_at' => $job->failed_at
+                ];
+            }),
+        ]);
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
     }
 });
-
-Route::post('/process-queue', function () {
-    // Increase execution time to prevent timeout during SMTP handshake
-    set_time_limit(120);
-    
-    try {
-        // Run the worker for one job or until empty
-        \Illuminate\Support\Facades\Artisan::call('queue:work', [
-            '--stop-when-empty' => true,
-            '--tries' => 3,
-            '--timeout' => 90 // Job timeout
-        ]);
-        
-        return redirect('/debug-queue')->with('status', 'Queue processed successfully!');
-    } catch (\Exception $e) {
-        return redirect('/debug-queue')->with('error', 'Error processing queue: ' . $e->getMessage());
-    }
-});
-

@@ -18,6 +18,13 @@ class CustomerController extends Controller
     protected function getMailConfiguration()
     {
         $config = MailConfiguration::where('is_active', true)->first();
+        $explicitMailer = env('MAIL_MAILER');
+        $resendKey = config('services.resend.key');
+
+        if ((!$explicitMailer || $explicitMailer === 'smtp') && $resendKey && !app()->environment('local')) {
+            config(['mail.default' => 'resend']);
+        }
+
         if ($config) {
             $mailPassword = $config->mail_password; 
 
@@ -118,4 +125,3 @@ class CustomerController extends Controller
         Mail::to($companyEmail)->send(new CompanyNotification($filteredData));
     }
 }
-

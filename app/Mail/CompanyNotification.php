@@ -34,6 +34,13 @@ class CompanyNotification extends Mailable implements ShouldQueue
     protected function getMailConfiguration()
     {
         $config = MailConfiguration::where('is_active', true)->first();
+        $explicitMailer = env('MAIL_MAILER');
+        $resendKey = config('services.resend.key');
+
+        if ((!$explicitMailer || $explicitMailer === 'smtp') && $resendKey && !app()->environment('local')) {
+            config(['mail.default' => 'resend']);
+        }
+
         if ($config) {
             $mailPassword = $config->mail_password;
 
@@ -56,6 +63,7 @@ class CompanyNotification extends Mailable implements ShouldQueue
      */
     public function build()
     {
+        $this->getMailConfiguration();
 
         return $this->subject('Thank You for Your Submission')
             ->view('emails.company_notification')
