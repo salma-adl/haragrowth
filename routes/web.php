@@ -201,16 +201,24 @@ Route::get('/debug-queue', function () {
 });
 
 Route::get('/process-queue', function () {
+    set_time_limit(120);
     try {
-        set_time_limit(120);
+        // Retry all failed jobs first
+        \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => ['all']]);
+        $retryOutput = \Illuminate\Support\Facades\Artisan::output();
+
+        // Process the queue
         \Illuminate\Support\Facades\Artisan::call('queue:work', [
             '--stop-when-empty' => true,
             '--tries' => 3,
-            '--timeout' => 90,
+            '--timeout' => 90
         ]);
+        $workOutput = \Illuminate\Support\Facades\Artisan::output();
+
         return response()->json([
             'status' => 'Queue processed successfully',
-            'output' => \Illuminate\Support\Facades\Artisan::output(),
+            'retry_output' => $retryOutput,
+            'work_output' => $workOutput
         ]);
     } catch (\Throwable $e) {
         return response()->json([
