@@ -199,3 +199,22 @@ Route::get('/debug-queue', function () {
         return response()->json(['error' => $e->getMessage()], 500);
     }
 });
+
+Route::get('/process-queue', function () {
+    try {
+        set_time_limit(120);
+        \Illuminate\Support\Facades\Artisan::call('queue:work', [
+            '--stop-when-empty' => true,
+            '--tries' => 3,
+            '--timeout' => 90,
+        ]);
+        return response()->json([
+            'status' => 'Queue processed successfully',
+            'output' => \Illuminate\Support\Facades\Artisan::output(),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
