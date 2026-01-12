@@ -200,6 +200,81 @@ Route::get('/debug-queue', function () {
     }
 });
 
+Route::get('/test-resend-direct', function () {
+    $results = [];
+
+    // 1. Direct SDK Test
+    try {
+        $apiKey = config('services.resend.key');
+        if (!$apiKey) {
+            throw new \Exception('Resend API key is missing in config(services.resend.key)');
+        }
+
+        $resend = \Resend\Resend::client($apiKey);
+        
+        // Check "From" address - MUST be a verified domain or onboarding@resend.dev
+        $fromEmail = config('mail.from.address');
+        if (str_contains($fromEmail, 'gmail.com') || str_contains($fromEmail, 'yahoo.com')) {
+            $results['sdk_warning'] = "Your configured MAIL_FROM_ADDRESS ($fromEmail) is a public domain. Resend requires a verified domain or onboarding@resend.dev. We will try to force 'onboarding@resend.dev' for this test.";
+            $testFrom = 'onboarding@resend.dev';
+        } else {
+            $testFrom = $fromEmail;
+        }
+
+        $response = $resend->emails->send([
+            'from' => $testFrom,
+            'to' => ['delivered@resend.dev'], // Safe test address
+            'subject' => 'Direct SDK Test from Hara Growth',
+            'html' => '<p>If you see this, the Resend SDK is working!</p>'
+        ]);
+
+        $results['sdk_test'] = [
+            'status' => 'success',
+            'id' => $response->id,
+            'from_used' => $testFrom
+        ];
+
+    } catch (\Exception $e) {
+        $results['sdk_test'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage()
+        ];
+    }
+
+    // 2. Laravel Mailer Test (using 'resend' driver)
+    try {
+        // Force config for this test to ensure we aren't using SMTP
+        config(['mail.default' => 'resend']);
+        
+        // Ensure "from" is safe for Resend if needed
+        $originalFrom = config('mail.from.address');
+        if (str_contains($originalFrom, 'gmail.com')) {
+             config(['mail.from.address' => 'onboarding@resend.dev']);
+        }
+
+        \Illuminate\Support\Facades\Mail::raw('This is a test via Laravel Mail Facade (driver: resend)', function ($message) {
+            $message->to('delivered@resend.dev')
+                    ->subject('Laravel Mailer Test');
+        });
+
+        $results['laravel_mailer_test'] = [
+            'status' => 'success',
+            'note' => 'Mail::raw executed without exception'
+        ];
+        
+        // Restore config
+        config(['mail.from.address' => $originalFrom]);
+
+    } catch (\Exception $e) {
+        $results['laravel_mailer_test'] = [
+            'status' => 'failed',
+            'error' => $e->getMessage()
+        ];
+    }
+
+    return response()->json($results);
+});
+
 Route::get('/process-queue', function () {
     // Increase max execution time for this request
     set_time_limit(300);
