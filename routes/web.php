@@ -201,17 +201,23 @@ Route::get('/debug-queue', function () {
 });
 
 Route::get('/process-queue', function () {
-    set_time_limit(120);
+    // Increase max execution time for this request
+    set_time_limit(300);
+    
     try {
         // Retry all failed jobs first
         \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => ['all']]);
         $retryOutput = \Illuminate\Support\Facades\Artisan::output();
 
-        // Process the queue
+        // Process the queue with limits to prevent timeouts
+        // --max-jobs=10: Process at most 10 jobs per request
+        // --max-time=240: Run for at most 240 seconds (leaving 60s buffer)
         \Illuminate\Support\Facades\Artisan::call('queue:work', [
             '--stop-when-empty' => true,
             '--tries' => 3,
-            '--timeout' => 90
+            '--timeout' => 60, 
+            '--max-jobs' => 10,
+            '--max-time' => 240
         ]);
         $workOutput = \Illuminate\Support\Facades\Artisan::output();
 
