@@ -7,6 +7,7 @@
     "require": {
         "php": "^8.2",
         "ext-exif": "*",
+        "ext-gd": "*",
         "ext-intl": "*",
         "ext-zip": "*",
         "althinect/filament-spatie-roles-permissions": "^2.3",
@@ -74,7 +75,10 @@
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         },
-        "platform-check": false
+        "platform-check": false,
+        "platform": {
+            "php": "8.2.30"
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true

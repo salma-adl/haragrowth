@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7a52dc34fa29a9759aaad8bc03a18aad",
+    "content-hash": "5ccb1fa11efca0ff106c90ae5db6d54a",
     "packages": [
         {
             "name": "althinect/filament-spatie-roles-permissions",
@@ -11089,9 +11089,13 @@
     "platform": {
         "php": "^8.2",
         "ext-exif": "*",
+        "ext-gd": "*",
         "ext-intl": "*",
         "ext-zip": "*"
     },
     "platform-dev": {},
+    "platform-overrides": {
+        "php": "8.2.30"
+    },
     "plugin-api-version": "2.9.0"
 }
