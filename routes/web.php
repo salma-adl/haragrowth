@@ -4,6 +4,7 @@ use App\Http\Controllers\BlogCommentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\CompanyProfileController;
 use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\CustomerController;
@@ -306,4 +307,8 @@ Route::get('/process-queue', function () {
             'error' => $e->getMessage(),
         ], 500);
     }
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/reports/download', [AdminReportController::class, 'download'])->name('admin.reports.download');
 });
