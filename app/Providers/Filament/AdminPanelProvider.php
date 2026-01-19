@@ -14,6 +14,7 @@ use App\Filament\Resources\SubMenuResource;
 use App\Filament\Resources\TherapistScheduleResource;
 use App\Filament\Resources\UserProfileResource;
 use App\Filament\Resources\UserResource;
+use App\Filament\Pages\Report;
 use App\Policies\PermissionHelper;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -113,6 +114,10 @@ class AdminPanelProvider extends PanelProvider
                             ...ServiceResource::getNavigationItems(),
                             ...ScheduleResource::getNavigationItems(),
                             ...TherapistScheduleResource::getNavigationItems(),
+                        ]),
+                    NavigationGroup::make('Laporan')
+                        ->items([
+                            ...Report::getNavigationItems(),
                         ]),
                     // NavigationGroup::make('Users and Permissions')
                     //     ->items([

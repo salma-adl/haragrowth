@@ -8,7 +8,8 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Radio;
+
 use Filament\Forms\Components\Section;
 use Filament\Actions\Action;
 use App\Models\Service;
@@ -31,6 +32,7 @@ class Report extends Page implements HasForms
 
     public ?array $data = [];
     public $reportData = null;
+    public ?string $generatedReportCategory = null;
 
     public static function canAccess(): bool
     {
@@ -39,14 +41,16 @@ class Report extends Page implements HasForms
         return $user && ($user->is_superuser || $user->hasRole('admin'));
     }
 
+    // ...
+
     public function mount(): void
     {
         $this->form->fill([
             'start_date' => now()->subMonth()->format('Y-m-d'),
             'end_date' => now()->format('Y-m-d'),
+            'report_category' => 'service', // Default category
             'service_id' => 'all',
             'therapist_id' => 'all',
-            'report_types' => ['booking_count', 'client_count', 'service_recap'],
         ]);
     }
 
@@ -65,6 +69,17 @@ class Report extends Page implements HasForms
                             ->required()
                             ->maxDate(now())
                             ->afterOrEqual('start_date'),
+                        
+                        Radio::make('report_category')
+                            ->label('Kategori Laporan')
+                            ->options([
+                                'service' => 'Laporan Keseluruhan per Layanan',
+                                'therapist' => 'Laporan per Terapis',
+                            ])
+                            ->default('service')
+                            ->required()
+                            ->reactive(), // Make it reactive to hide/show fields if needed
+
                         Select::make('service_id')
                             ->label('Layanan')
                             ->options(
@@ -72,28 +87,16 @@ class Report extends Page implements HasForms
                             )
                             ->default('all')
                             ->required(),
+                            
                         Select::make('therapist_id')
                             ->label('Terapis')
                             ->options(function () {
-                                // Get users who have therapist role or admin role who might have profiles
-                                // Ideally we list UserProfiles but the filter asks for Therapist Name
-                                // We'll list Users who are therapists.
-                                // Note: UserProfile has 'name' which might be different from User 'name'.
-                                // Let's use UserProfile names since Bookings link to UserProfile.
                                 return ['all' => 'Semua Terapis'] + UserProfile::pluck('name', 'id')->toArray();
                             })
                             ->default('all')
                             ->searchable()
-                            ->required(),
-                        CheckboxList::make('report_types')
-                            ->label('Jenis Laporan')
-                            ->options([
-                                'booking_count' => 'Jumlah Booking',
-                                'client_count' => 'Jumlah Klien Unik',
-                                'service_recap' => 'Rekap Layanan',
-                            ])
-                            ->default(['booking_count', 'client_count', 'service_recap'])
-                            ->columns(3),
+                            ->required()
+                            ->visible(fn (callable $get) => $get('report_category') === 'therapist'), // Only show if therapist report selected
                     ])
                     ->columns(2),
             ])
@@ -114,42 +117,58 @@ class Report extends Page implements HasForms
 
         $query = Booking::query()
             ->with(['service', 'userProfile', 'customer'])
-            ->whereDate('booking_date', '>=', $startDate)
-            ->whereDate('booking_date', '<=', $endDate);
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
 
         if ($data['service_id'] !== 'all') {
             $query->where('service_id', $data['service_id']);
         }
 
-        if ($data['therapist_id'] !== 'all') {
-            // Here therapist_id is actually UserProfile ID based on the options() logic above
+        // Filter therapist only if relevant or selected
+        if (($data['report_category'] === 'therapist') && ($data['therapist_id'] !== 'all')) {
             $query->where('user_profile_id', $data['therapist_id']);
         }
         
         $bookings = $query->get();
-
-        // Process data for the table
-        // Group by Therapist -> Service
-        $grouped = $bookings->groupBy(function($booking) {
-            return $booking->userProfile->name ?? 'Unassigned';
-        });
-
         $report = [];
-        foreach ($grouped as $therapistName => $therapistBookings) {
-            $serviceGroups = $therapistBookings->groupBy(function($booking) {
+
+        if ($data['report_category'] === 'service') {
+            // A. Laporan Keseluruhan per Layanan
+            $serviceGroups = $bookings->groupBy(function($booking) {
                 return $booking->service->name ?? 'Unknown Service';
             });
 
             foreach ($serviceGroups as $serviceName => $serviceBookings) {
                 $report[] = [
-                    'therapist' => $therapistName,
                     'service' => $serviceName,
                     'booking_count' => $serviceBookings->count(),
                     'client_count' => $serviceBookings->pluck('customer_id')->unique()->count(),
                 ];
             }
+
+        } elseif ($data['report_category'] === 'therapist') {
+            // B. Laporan per Terapis
+            $grouped = $bookings->groupBy(function($booking) {
+                return $booking->userProfile->name ?? 'Unassigned';
+            });
+
+            foreach ($grouped as $therapistName => $therapistBookings) {
+                $serviceGroups = $therapistBookings->groupBy(function($booking) {
+                    return $booking->service->name ?? 'Unknown Service';
+                });
+
+                foreach ($serviceGroups as $serviceName => $serviceBookings) {
+                    $report[] = [
+                        'therapist' => $therapistName,
+                        'service' => $serviceName,
+                        'booking_count' => $serviceBookings->count(),
+                        'client_count' => $serviceBookings->pluck('customer_id')->unique()->count(),
+                    ];
+                }
+            }
         }
 
         $this->reportData = $report;
+        $this->generatedReportCategory = $data['report_category'];
     }
 }

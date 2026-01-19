@@ -22,8 +22,8 @@ class AdminReportController extends Controller
 
         $query = Booking::query()
             ->with(['service', 'userProfile', 'customer'])
-            ->whereDate('booking_date', '>=', $startDate)
-            ->whereDate('booking_date', '<=', $endDate);
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate);
 
         $serviceId = $request->input('service_id', 'all');
         if ($serviceId !== 'all') {
@@ -37,45 +37,44 @@ class AdminReportController extends Controller
         
         $bookings = $query->get();
 
-        $grouped = $bookings->groupBy(function($booking) {
-            return $booking->userProfile->name ?? 'Unassigned';
-        });
-
+        $reportCategory = $request->input('report_category', 'service');
         $reportData = [];
-        foreach ($grouped as $therapistName => $therapistBookings) {
-            $serviceGroups = $therapistBookings->groupBy(function($booking) {
+
+        if ($reportCategory === 'service') {
+            $serviceGroups = $bookings->groupBy(function($booking) {
                 return $booking->service->name ?? 'Unknown Service';
             });
 
             foreach ($serviceGroups as $serviceName => $serviceBookings) {
                 $reportData[] = [
-                    'therapist' => $therapistName,
                     'service' => $serviceName,
                     'booking_count' => $serviceBookings->count(),
                     'client_count' => $serviceBookings->pluck('customer_id')->unique()->count(),
                 ];
             }
+        } elseif ($reportCategory === 'therapist') {
+            $grouped = $bookings->groupBy(function($booking) {
+                return $booking->userProfile->name ?? 'Unassigned';
+            });
+
+            foreach ($grouped as $therapistName => $therapistBookings) {
+                $serviceGroups = $therapistBookings->groupBy(function($booking) {
+                    return $booking->service->name ?? 'Unknown Service';
+                });
+
+                foreach ($serviceGroups as $serviceName => $serviceBookings) {
+                    $reportData[] = [
+                        'therapist' => $therapistName,
+                        'service' => $serviceName,
+                        'booking_count' => $serviceBookings->count(),
+                        'client_count' => $serviceBookings->pluck('customer_id')->unique()->count(),
+                    ];
+                }
+            }
         }
 
-        $filename = "laporan_booking_" . date('Ymd') . ".csv";
-        $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=" . $filename,
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0"
-        ];
-
-        $callback = function() use ($reportData) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['Nama Terapis', 'Layanan', 'Jumlah Booking', 'Jumlah Klien Unik']);
-
-            foreach ($reportData as $row) {
-                fputcsv($file, [$row['therapist'], $row['service'], $row['booking_count'], $row['client_count']]);
-            }
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        $filename = "laporan_booking_" . date('Ymd') . ".xlsx";
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\BookingReportExport($reportData, $reportCategory), $filename);
     }
 }
